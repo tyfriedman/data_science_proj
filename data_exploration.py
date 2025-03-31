@@ -153,36 +153,78 @@ plt.close()
 ### Advanced Analytics
 # Feature engineering - create engagement metrics
 session_cols = [col for col in data.columns if 'session' in col]
+
+# Calculate attendance rate based on time spent in sessions
+# First, replace 0 values with NaN since they represent non-attendance
+for col in session_cols:
+    data[col] = data[col].replace(0, np.nan)
+
+# Calculate the average attendance percentage across all sessions
+# For each student, sum the attendance percentages and divide by the number of sessions
+data['attendance_quality'] = data[session_cols].mean(axis=1, skipna=True) / 100  # Divide by 100 to get 0-1 scale
+
+# Calculate the attendance rate (proportion of sessions attended)
 data['attendance_rate'] = data[session_cols].count(axis=1) / len(session_cols)
+
+# Create a combined attendance metric that considers both rate and quality
+data['attendance_score'] = data['attendance_rate'] * data['attendance_quality']
+
+# Calculate forum engagement
 data['forum_engagement'] = data['fourm Q'] + data['fourm A']
 
 # Normalize the metrics to 0-1 range to ensure proper weighting
 max_forum = data['forum_engagement'].max()
 max_office = data['office hour visits'].max()
 
+# Update engagement score to use the new attendance_score
 data['engagement_score'] = (
-    data['attendance_rate'] * 0.5 + 
+    data['attendance_score'] * 0.5 + 
     (data['forum_engagement'] / max_forum if max_forum > 0 else 0) * 0.3 + 
     (data['office hour visits'] / max_office if max_office > 0 else 0) * 0.2
 )
 
 # Analyze the new features
-plt.figure(figsize=(15, 5))
+plt.figure(figsize=(15, 10))
 
-plt.subplot(1, 3, 1)
+plt.subplot(2, 2, 1)
 sns.boxplot(x='dropout', y='attendance_rate', data=data)
 plt.title('Attendance Rate by Dropout Status')
 
-plt.subplot(1, 3, 2)
-sns.boxplot(x='dropout', y='forum_engagement', data=data)
-plt.title('Forum Engagement by Dropout Status')
+plt.subplot(2, 2, 2)
+sns.boxplot(x='dropout', y='attendance_quality', data=data)
+plt.title('Attendance Quality by Dropout Status')
 
-plt.subplot(1, 3, 3)
+plt.subplot(2, 2, 3)
+sns.boxplot(x='dropout', y='attendance_score', data=data)
+plt.title('Combined Attendance Score by Dropout Status')
+
+plt.subplot(2, 2, 4)
 sns.boxplot(x='dropout', y='engagement_score', data=data)
 plt.title('Overall Engagement Score by Dropout Status')
 
 plt.tight_layout()
-plt.savefig('exploration_graphs/engagement_metrics.png')
+plt.savefig('exploration_graphs/attendance_metrics.png')
+plt.close()
+
+# Additional visualization to compare the different attendance metrics
+plt.figure(figsize=(10, 6))
+attendance_metrics = ['attendance_rate', 'attendance_quality', 'attendance_score']
+for dropout_status in [0, 1]:
+    subset = data[data['dropout'] == dropout_status]
+    values = [subset[metric].mean() for metric in attendance_metrics]
+    plt.bar(
+        [f"{metric} ({'Dropout' if dropout_status == 1 else 'Non-Dropout'})" 
+         for metric in attendance_metrics], 
+        values,
+        alpha=0.7,
+        color='red' if dropout_status == 1 else 'blue'
+    )
+
+plt.title('Comparison of Attendance Metrics by Dropout Status')
+plt.ylabel('Average Value (0-1 scale)')
+plt.xticks(rotation=45, ha='right')
+plt.tight_layout()
+plt.savefig('exploration_graphs/attendance_metrics_comparison.png')
 plt.close()
 
 # Pairplot for key variables
