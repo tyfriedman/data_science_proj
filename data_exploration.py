@@ -18,7 +18,7 @@ print(data.describe())
 print(f"\n\nMissing values before cleaning:")
 print(data.isnull().sum())
 
-### Data Cleaning
+### Overview of dropout rates
 # drop missing values
 full_data = data.dropna()
 null_data = data[data.isnull().any(axis=1)]
@@ -87,7 +87,7 @@ def plot_histograms(df, columns, bins=10, figsize=(15, 10)):
         df[column].hist(bins=bins)
         plt.title(f'Distribution of {column}')
     plt.tight_layout()
-    plt.savefig('numeric_distributions.png')
+    plt.savefig('exploration_graphs/numeric_distributions.png')
     plt.close()
 
 # Select numeric columns for analysis
@@ -111,7 +111,7 @@ data['dropout'].value_counts().plot(kind='bar')
 plt.title('Dropout Distribution')
 
 plt.tight_layout()
-plt.savefig('categorical_distributions.png')
+plt.savefig('exploration_graphs/categorical_distributions.png')
 plt.close()
 
 ### Bivariate Analysis
@@ -122,7 +122,7 @@ correlation = numeric_data.corr()
 sns.heatmap(correlation, annot=True, cmap='coolwarm', linewidths=0.5, fmt=".2f")
 plt.title('Correlation Matrix')
 plt.tight_layout()
-plt.savefig('correlation_heatmap.png')
+plt.savefig('exploration_graphs/correlation_heatmap.png')
 plt.close()
 
 # Analyze relationship between session attendance and dropout
@@ -133,7 +133,7 @@ for i, col in enumerate(session_cols, 1):
     sns.boxplot(x='dropout', y=col, data=data)
     plt.title(f'{col} by Dropout Status')
 plt.tight_layout()
-plt.savefig('session_attendance_by_dropout.png')
+plt.savefig('exploration_graphs/session_attendance_by_dropout.png')
 plt.close()
 
 # Forum engagement by dropout status
@@ -147,17 +147,23 @@ sns.boxplot(x='dropout', y='fourm A', data=data)
 plt.title('Forum Answers by Dropout Status')
 
 plt.tight_layout()
-plt.savefig('forum_engagement_by_dropout.png')
+plt.savefig('exploration_graphs/forum_engagement_by_dropout.png')
 plt.close()
 
 ### Advanced Analytics
 # Feature engineering - create engagement metrics
+session_cols = [col for col in data.columns if 'session' in col]
 data['attendance_rate'] = data[session_cols].count(axis=1) / len(session_cols)
 data['forum_engagement'] = data['fourm Q'] + data['fourm A']
+
+# Normalize the metrics to 0-1 range to ensure proper weighting
+max_forum = data['forum_engagement'].max()
+max_office = data['office hour visits'].max()
+
 data['engagement_score'] = (
     data['attendance_rate'] * 0.5 + 
-    data['forum_engagement'] / data['forum_engagement'].max() * 0.3 + 
-    data['office hour visits'] / data['office hour visits'].max() * 0.2
+    (data['forum_engagement'] / max_forum if max_forum > 0 else 0) * 0.3 + 
+    (data['office hour visits'] / max_office if max_office > 0 else 0) * 0.2
 )
 
 # Analyze the new features
@@ -176,14 +182,14 @@ sns.boxplot(x='dropout', y='engagement_score', data=data)
 plt.title('Overall Engagement Score by Dropout Status')
 
 plt.tight_layout()
-plt.savefig('engagement_metrics.png')
+plt.savefig('exploration_graphs/engagement_metrics.png')
 plt.close()
 
 # Pairplot for key variables
 sns.pairplot(data=data, 
              vars=['session 1', 'fourm Q', 'fourm A', 'office hour visits'], 
              hue='dropout')
-plt.savefig('key_variables_pairplot.png')
+plt.savefig('exploration_graphs/key_variables_pairplot.png')
 plt.close()
 
 ### Temporal Analysis
@@ -205,7 +211,7 @@ plt.ylabel('Average Attendance')
 plt.title('Attendance Trends Over Time by Dropout Status')
 plt.legend()
 plt.grid(True, linestyle='--', alpha=0.7)
-plt.savefig('attendance_trends.png')
+plt.savefig('exploration_graphs/attendance_trends.png')
 plt.close()
 
 ### Student Performance Analysis
@@ -225,7 +231,7 @@ if test_cols:
     plt.title('Test Performance Over Time by Dropout Status')
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig('test_performance.png')
+    plt.savefig('exploration_graphs/test_performance.png')
     plt.close()
 
 # Compare performance by year
@@ -233,42 +239,56 @@ if 'final grade_numeric' in data.columns:
     plt.figure(figsize=(10, 6))
     sns.boxplot(x='Year', y='final grade_numeric', hue='dropout', data=data)
     plt.title('Final Grade by Year and Dropout Status')
-    plt.savefig('grade_by_year.png')
+    plt.savefig('exploration_graphs/grade_by_year.png')
     plt.close()
 
 ### Additional Analyses
 # Identify patterns in dropout risk
 # Create a function to calculate engagement percentiles
 def engagement_percentile(row):
-    thresholds = {
-        'low': 25,
-        'medium': 50,
-        'high': 75
-    }
+    # First check if engagement_score exists in the row
+    if 'engagement_score' not in row:
+        return 'unknown'
+    
     score = row['engagement_score']
     if pd.isna(score):
         return 'unknown'
-    elif score <= thresholds['low']:
+    
+    # Calculate percentiles based on the actual distribution
+    # instead of fixed thresholds
+    if score <= data['engagement_score'].quantile(0.25):
         return 'very low'
-    elif score <= thresholds['medium']:
+    elif score <= data['engagement_score'].quantile(0.50):
         return 'low'
-    elif score <= thresholds['high']:
+    elif score <= data['engagement_score'].quantile(0.75):
         return 'medium'
     else:
         return 'high'
 
+# Now apply the engagement level categorization
 data['engagement_level'] = data.apply(engagement_percentile, axis=1)
+
+# Check the distribution of engagement levels
+print("\nEngagement level distribution:")
+print(data['engagement_level'].value_counts())
 
 # Analyze dropout rates by engagement level
 plt.figure(figsize=(10, 6))
 dropout_by_engagement = data.groupby('engagement_level')['dropout'].mean() * 100
+
+# Sort the categories in a logical order
+order = ['very low', 'low', 'medium', 'high', 'unknown']
+dropout_by_engagement = dropout_by_engagement.reindex(order)
+
+# Plot with the correct order
 dropout_by_engagement.plot(kind='bar')
 plt.title('Dropout Rate by Engagement Level')
 plt.ylabel('Dropout Rate (%)')
 plt.ylim(0, 100)
 for i, v in enumerate(dropout_by_engagement):
-    plt.text(i, v + 5, f"{v:.1f}%", ha='center')
-plt.savefig('dropout_by_engagement.png')
+    if not pd.isna(v):  # Only add text for non-NaN values
+        plt.text(i, v + 5, f"{v:.1f}%", ha='center')
+plt.savefig('exploration_graphs/dropout_by_engagement.png')
 plt.close()
 
 # Save the processed data for modeling
