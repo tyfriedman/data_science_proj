@@ -3,6 +3,7 @@ import numpy as np
 import csv
 import matplotlib.pyplot as plt
 import seaborn as sns
+from scipy import stats
 
 ### Data Understanding
 # Load the data
@@ -258,31 +259,129 @@ plt.close()
 
 ### Student Performance Analysis
 # Analyze test performance
-test_cols = [col for col in data.columns if 'test' in col and '_numeric' in col]
-if test_cols:
-    plt.figure(figsize=(10, 6))
-    for dropout_status in [0, 1]:
-        subset = data[data['dropout'] == dropout_status]
-        test_scores = [subset[col].mean() for col in test_cols]
-        plt.plot(range(1, len(test_scores) + 1), test_scores, 
-                marker='o', 
-                label=f'Dropout: {"Yes" if dropout_status == 1 else "No"}')
+test_cols_original = [col for col in data.columns if 'test' in col and '_numeric' not in col]
+test_cols_numeric = [col for col in data.columns if 'test' in col and '_numeric' in col]
 
-    plt.xlabel('Test Number')
-    plt.ylabel('Average Score')
-    plt.title('Test Performance Over Time by Dropout Status')
-    plt.legend()
-    plt.grid(True, linestyle='--', alpha=0.7)
-    plt.savefig('exploration_graphs/test_performance.png')
-    plt.close()
+# Function to find the last test before dropout
+def get_last_test_before_dropout(row):
+    # For students who dropped out
+    if row['dropout'] == 1:
+        # Get the test scores (both original and numeric)
+        test_scores = row[test_cols_original]
+        test_scores_numeric = row[test_cols_numeric]
+        
+        # Find the last non-null test
+        last_test_idx = None
+        for i, score in enumerate(test_scores):
+            if pd.notna(score):
+                last_test_idx = i
+            else:
+                # Stop once we hit the first null (dropout happened after this)
+                break
+                
+        if last_test_idx is not None:
+            return test_scores_numeric.iloc[last_test_idx]
+    
+    return np.nan
 
-# Compare performance by year
-if 'final grade_numeric' in data.columns:
-    plt.figure(figsize=(10, 6))
-    sns.boxplot(x='Year', y='final grade_numeric', hue='dropout', data=data)
-    plt.title('Final Grade by Year and Dropout Status')
-    plt.savefig('exploration_graphs/grade_by_year.png')
-    plt.close()
+# Apply the function to get the last test score before dropout
+data['last_test_before_dropout'] = data.apply(get_last_test_before_dropout, axis=1)
+
+# Calculate average test scores for non-dropout students
+non_dropout_avg_scores = data[data['dropout'] == 0][test_cols_numeric].mean(axis=1)
+data.loc[data['dropout'] == 0, 'avg_test_score'] = non_dropout_avg_scores
+
+# Compare the distributions
+plt.figure(figsize=(12, 6))
+
+# Plot 1: Compare distributions
+plt.subplot(1, 2, 1)
+# Last test before dropout
+dropout_scores = data[data['dropout'] == 1]['last_test_before_dropout'].dropna()
+# Average test scores for non-dropouts
+non_dropout_scores = data[data['dropout'] == 0]['avg_test_score'].dropna()
+
+# Create a DataFrame for seaborn
+plot_data = pd.DataFrame({
+    'Score': pd.concat([dropout_scores, non_dropout_scores]),
+    'Category': ['Last Test Before Dropout'] * len(dropout_scores) + 
+                ['Average Test (Non-Dropout)'] * len(non_dropout_scores)
+})
+
+sns.boxplot(x='Category', y='Score', data=plot_data)
+plt.title('Last Test Before Dropout vs. Average Test Score (Non-Dropouts)')
+plt.ylabel('Test Score (0-4 scale)')
+
+# Plot 2: Show the actual score distributions
+plt.subplot(1, 2, 2)
+
+# Define common bins for both histograms
+bins = [0, 1, 2, 3, 4]  # Using grade-level bins (F, D, C, B, A)
+bin_centers = [(bins[i] + bins[i+1])/2 for i in range(len(bins)-1)]
+bin_width = 0.35  # Width of each bar
+
+# Calculate histograms manually
+dropout_hist, _ = np.histogram(dropout_scores, bins=bins)
+non_dropout_hist, _ = np.histogram(non_dropout_scores, bins=bins)
+
+# Plot side-by-side bars
+plt.bar([x - bin_width/2 for x in bin_centers], dropout_hist, 
+        width=bin_width, color='red', alpha=0.7, label='Last Test Before Dropout')
+plt.bar([x + bin_width/2 for x in bin_centers], non_dropout_hist, 
+        width=bin_width, color='blue', alpha=0.7, label='Average Test (Non-Dropouts)')
+
+# Add labels and formatting
+plt.title('Distribution of Test Scores')
+plt.xlabel('Test Score (0-4 scale)')
+plt.ylabel('Frequency')
+plt.xticks(bin_centers, ['F (0-1)', 'D (1-2)', 'C (2-3)', 'B (3-4)'])
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+plt.tight_layout()
+plt.savefig('exploration_graphs/pre_dropout_test_comparison.png')
+plt.close()
+
+# Calculate and print statistics
+print(f"Average last test score before dropout: {dropout_scores.mean():.2f}")
+print(f"Average test score for non-dropouts: {non_dropout_scores.mean():.2f}")
+print(f"Difference: {dropout_scores.mean() - non_dropout_scores.mean():.2f}")
+
+# Test if the difference is statistically significant
+t_stat, p_value = stats.ttest_ind(dropout_scores, non_dropout_scores, equal_var=False)
+print(f"T-test results: t={t_stat:.2f}, p={p_value:.4f}")
+print(f"The difference is {'statistically significant' if p_value < 0.05 else 'not statistically significant'}")
+
+# Create a more detailed analysis by year
+plt.figure(figsize=(10, 6))
+for year in data['Year'].unique():
+    # Last test before dropout for this year
+    year_dropout_scores = data[(data['dropout'] == 1) & (data['Year'] == year)]['last_test_before_dropout'].dropna()
+    # Average test scores for non-dropouts in this year
+    year_non_dropout_scores = data[(data['dropout'] == 0) & (data['Year'] == year)]['avg_test_score'].dropna()
+    
+    if len(year_dropout_scores) > 0 and len(year_non_dropout_scores) > 0:
+        print(f"\nYear: {year}")
+        print(f"  Average last test score before dropout: {year_dropout_scores.mean():.2f}")
+        print(f"  Average test score for non-dropouts: {year_non_dropout_scores.mean():.2f}")
+        print(f"  Difference: {year_dropout_scores.mean() - year_non_dropout_scores.mean():.2f}")
+        
+        # Plot the data
+        plt.bar(
+            [f"{year} - Dropout", f"{year} - Non-Dropout"], 
+            [year_dropout_scores.mean(), year_non_dropout_scores.mean()],
+            yerr=[year_dropout_scores.std(), year_non_dropout_scores.std()],
+            capsize=10,
+            alpha=0.7
+        )
+
+plt.title('Test Performance (average/last test before dropout) by Year and Dropout Status')
+plt.ylabel('Average Test Score (0-4 scale)')
+plt.xticks(rotation=45, ha='right')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.tight_layout()
+plt.savefig('exploration_graphs/test_performance_by_year.png')
+plt.close()
 
 ### Additional Analyses
 # Identify patterns in dropout risk
