@@ -29,7 +29,7 @@ print(f"\n\nMissing values after cleaning:")
 print(full_data.isnull().sum())
 
 # check data structure
-print(f"\n\nData structure after cleaning:")
+print(f"\n\nData structure after removing rows with missing values:")
 print(full_data.head())
 print(full_data.info())
 print(full_data.describe())
@@ -39,7 +39,7 @@ print(f"\n\nDropout rate distribution (before cleaning):")
 print(data['dropout'].value_counts(normalize=True))
 
 # check dropout rate distribution with cleaned data
-print(f"\n\nDropout rate distribution (after cleaning):")
+print(f"\n\nDropout rate distribution (after removing rows with missing values):")
 print(full_data['dropout'].value_counts(normalize=True))
 
 ### Data Preprocessing
