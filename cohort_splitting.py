@@ -48,9 +48,14 @@ def create_cohorts(df, checkpoints):
         else:
             cohorts.append(df[df_cols[checkpoints[i-1]:checkpoints[i]]])
 
+    # Dropout labels
+    dropout_labels = df['dropout']
+
     # Save cohorts to csv files
     for i, cohort in enumerate(cohorts):
         cohort.to_csv(f'cohort_data/cohort_{i+1}.csv')
+        cohort['dropout'] = dropout_labels
+        cohort.to_csv(f'cohort_data/cohort_{i+1}_labelled.csv')
 
     return cohorts
 
