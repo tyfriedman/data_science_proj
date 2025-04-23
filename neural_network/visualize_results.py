@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve
+from sklearn.metrics import confusion_matrix, roc_curve, auc, precision_recall_curve, accuracy_score, precision_score, recall_score, f1_score
 import tensorflow as tf
 import os
 import json
@@ -28,25 +28,17 @@ def find_available_models():
     # Check for default models
     os.makedirs('models', exist_ok=True)
     for cohort in range(1, 5):
-        # Check for both possible extensions
-        h5_path = f'models/cohort{cohort}_model.h5'
         keras_path = f'models/cohort{cohort}_model.keras'
         
-        if os.path.exists(h5_path):
-            models['default'][cohort] = h5_path
-        elif os.path.exists(keras_path):
+        if os.path.exists(keras_path):
             models['default'][cohort] = keras_path
     
     # Check for tuned models
     os.makedirs('hyperparameter_tuning', exist_ok=True)
     for cohort in range(1, 5):
-        # Check for both possible extensions
-        h5_path = f'hyperparameter_tuning/cohort{cohort}_best_model.h5'
         keras_path = f'hyperparameter_tuning/cohort{cohort}_best_model.keras'
         
-        if os.path.exists(h5_path):
-            models['tuned'][cohort] = h5_path
-        elif os.path.exists(keras_path):
+        if os.path.exists(keras_path):
             models['tuned'][cohort] = keras_path
     
     return models
@@ -542,6 +534,66 @@ def visualize_prediction_distribution(models_dict, model_type):
     print(f"Saved prediction distribution plots for {model_type} models")
     plt.close()
 
+def calculate_and_output_metrics(models_dict, model_type):
+    """Calculate and output metrics (Accuracy, Precision, Recall, F1, AUC) for each model."""
+    # Create the results directory if it doesn't exist
+    os.makedirs('visualization', exist_ok=True)
+    
+    # Prepare results dictionary and DataFrame for CSV output
+    results = []
+    
+    print(f"\nPerformance Metrics for {model_type.capitalize()} Models:")
+    print("-" * 80)
+    print(f"{'Cohort':<10}{'Accuracy':<12}{'Precision':<12}{'Recall':<12}{'F1 Score':<12}{'AUC':<12}")
+    print("-" * 80)
+    
+    for cohort, model_path in models_dict.items():
+        model, X_test, y_test, _ = load_model_and_data(cohort, model_path)
+        
+        if model is None or X_test is None or y_test is None:
+            print(f"Cohort {cohort}: Could not load model or data")
+            continue
+        
+        try:
+            # Predict probabilities and classes
+            y_pred_prob = model.predict(X_test)
+            y_pred = (y_pred_prob > 0.5).astype(int)
+            
+            # Calculate metrics
+            accuracy = accuracy_score(y_test, y_pred)
+            precision = precision_score(y_test, y_pred, zero_division=0)
+            recall = recall_score(y_test, y_pred, zero_division=0)
+            f1 = f1_score(y_test, y_pred, zero_division=0)
+            
+            # Calculate ROC AUC
+            fpr, tpr, _ = roc_curve(y_test, y_pred_prob)
+            roc_auc = auc(fpr, tpr)
+            
+            # Print metrics
+            print(f"{cohort:<10}{accuracy:.4f}{'':<7}{precision:.4f}{'':<7}{recall:.4f}{'':<7}{f1:.4f}{'':<7}{roc_auc:.4f}")
+            
+            # Add to results for CSV
+            results.append({
+                'Cohort': cohort,
+                'Model_Type': model_type,
+                'Accuracy': accuracy,
+                'Precision': precision,
+                'Recall': recall,
+                'F1_Score': f1,
+                'AUC': roc_auc
+            })
+            
+        except Exception as e:
+            print(f"Error calculating metrics for cohort {cohort}: {str(e)}")
+    
+    print("-" * 80)
+    
+    # Save results to CSV
+    if results:
+        results_df = pd.DataFrame(results)
+        results_df.to_csv(f'visualization/metrics_{model_type}.csv', index=False)
+        print(f"Saved metrics to visualization/metrics_{model_type}.csv")
+
 def main():
     """Main function to run all visualizations."""
     print("Finding available models...")
@@ -560,6 +612,7 @@ def main():
         visualize_confusion_matrices(available_models['default'], 'default')
         visualize_feature_importance(available_models['default'], 'default')
         visualize_prediction_distribution(available_models['default'], 'default')
+        calculate_and_output_metrics(available_models['default'], 'default')
     else:
         print("No default models found to visualize")
     
@@ -571,6 +624,7 @@ def main():
         visualize_confusion_matrices(available_models['tuned'], 'tuned')
         visualize_feature_importance(available_models['tuned'], 'tuned')
         visualize_prediction_distribution(available_models['tuned'], 'tuned')
+        calculate_and_output_metrics(available_models['tuned'], 'tuned')
     else:
         print("No tuned models found to visualize")
     
