@@ -1,0 +1,10 @@
+{
+    "first_layer_size": 128,
+    "num_hidden_layers": 3,
+    "activation": "tanh",
+    "dropout_rate": 0,
+    "optimizer": "adam",
+    "learning_rate": 0.001,
+    "batch_size": 16,
+    "epochs": 50
+}

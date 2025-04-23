@@ -1,0 +1,10 @@
+{
+    "first_layer_size": 32,
+    "num_hidden_layers": 2,
+    "activation": "relu",
+    "dropout_rate": 0,
+    "optimizer": "rmsprop",
+    "learning_rate": 0.01,
+    "batch_size": 16,
+    "epochs": 50
+}
