@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 def main():
     # Load the data
-    df = pd.read_csv('processed_student_engagement.csv', index_col=0)
+    df = pd.read_csv('../processed_student_engagement.csv', index_col=0)
     
     # Define completion stage for each student
     # 0: Dropped after test 1 (1/3 completion)
@@ -77,10 +77,10 @@ def main():
     cohort_4.rename(columns={'dropout': 'final_dropout'}, inplace=True)
     
     # Save cohorts to csv files
-    cohort_1.to_csv('./cohorts/cohort1.csv')
-    cohort_2.to_csv('./cohorts/cohort2.csv')
-    cohort_3.to_csv('./cohorts/cohort3.csv')
-    cohort_4.to_csv('./cohorts/cohort4.csv')
+    cohort_1.to_csv('./cohort1.csv')
+    cohort_2.to_csv('./cohort2.csv')
+    cohort_3.to_csv('./cohort3.csv')
+    cohort_4.to_csv('./cohort4.csv')
     
     print(f"Cohort 1 size: {len(cohort_1)}")
     print(f"Cohort 2 size: {len(cohort_2)}")

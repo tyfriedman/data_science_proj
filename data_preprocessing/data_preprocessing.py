@@ -1,7 +1,7 @@
 import pandas as pd
 
 # Load the data
-df = pd.read_csv('UK online student engagement.csv', index_col=0)
+df = pd.read_csv('../UK online student engagement.csv', index_col=0)
 
 # Create mapping dictionaries
 grade_mapping = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'F': 5}
@@ -26,6 +26,6 @@ for col in grade_columns:
         df[col] = df[col].map(grade_mapping)
 
 # Save the processed data
-df.to_csv('processed_student_engagement.csv')
+df.to_csv('../processed_student_engagement.csv')
 
 print("Data processing complete. Output saved to 'processed_student_engagement.csv'")
