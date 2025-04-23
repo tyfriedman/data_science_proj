@@ -41,6 +41,8 @@ print(classification_report(y_test, y_pred))
 plt.figure(figsize=(12, 8))
 tree.plot_tree(clf, feature_names=X.columns, class_names=["Stayed", "Dropped"], filled=True)
 plt.show()
+plt.savefig("cohort_1_decision_tree.png")
+
 
 # Get feature importances
 importances = clf.feature_importances_
@@ -53,13 +55,14 @@ feat_imp_df = feat_imp_df.sort_values(by='Importance', ascending=False)
 # Print the table
 print(feat_imp_df)
 
-# Optional: Plot the importances
+#Plot the importances
 plt.figure(figsize=(10, 6))
 plt.barh(feat_imp_df['Feature'], feat_imp_df['Importance'], color='skyblue')
 plt.gca().invert_yaxis()  # Most important on top
 plt.title('Feature Importance in Decision Tree')
 plt.xlabel('Importance Score')
 plt.show()
+plt.savefig("cohort_1_feature_importance.png")
 
 """Understanding: Early attendance is key in predicting in whether a student will drop a course in terms of both attending office hours, and being a part of session 1.
 
@@ -89,6 +92,7 @@ print(classification_report(y_test, y_pred))
 plt.figure(figsize=(12, 8))
 tree.plot_tree(clf, feature_names=X.columns, class_names=["Stayed", "Dropped"], filled=True)
 plt.show()
+plt.savefig("cohort_2_decision_tree.png")
 
 # Get feature importances
 importances = clf.feature_importances_
@@ -108,6 +112,7 @@ plt.gca().invert_yaxis()  # Most important on top
 plt.title('Feature Importance in Decision Tree')
 plt.xlabel('Importance Score')
 plt.show()
+plt.savefig("cohort_2_feature_importance.png")
 
 """Understanding: By cohort 2 we see a big change in that attendance in classes or office hours isn't the key point of staying in the class. Rather, posting questions in the forum and having it be answered is the highest indicator of a student dropping after a class. This may indicate that students who were previously struggling already and didn't receive the help the 1 on 1 support they needed ended up dropping.
 
@@ -137,6 +142,7 @@ print(classification_report(y_test, y_pred))
 plt.figure(figsize=(12, 8))
 tree.plot_tree(clf, feature_names=X.columns, class_names=["Stayed", "Dropped"], filled=True)
 plt.show()
+plt.savefig("cohort_3_decision_tree.png")
 
 # Get feature importances
 importances = clf.feature_importances_
@@ -156,6 +162,7 @@ plt.gca().invert_yaxis()  # Most important on top
 plt.title('Feature Importance in Decision Tree')
 plt.xlabel('Importance Score')
 plt.show()
+plt.savefig("cohort_3_feature_importance.png")
 
 """Understanding: By cohort 3, we see attendance in sessions is not as important a factor in predicting drop out rates compared to participation in office ours and having questions answered in the forum.
 
@@ -185,6 +192,7 @@ print(classification_report(y_test, y_pred))
 plt.figure(figsize=(12, 8))
 tree.plot_tree(clf, feature_names=X.columns, class_names=["Stayed", "Dropped"], filled=True)
 plt.show()
+plt.savefig("cohort_4_decision_tree.png")
 
 # Get feature importances
 importances = clf.feature_importances_
@@ -204,5 +212,6 @@ plt.gca().invert_yaxis()  # Most important on top
 plt.title('Feature Importance in Decision Tree')
 plt.xlabel('Importance Score')
 plt.show()
+plt.savefig("cohort_4_feature_importance.png")
 
 """Understanding: This shows that office hour visits were a key indicator of drop out rates. Overall, after cohort 1 session 1 attendance, the overall trend was that 1 on 1 indicators like office hours and forum and question answers were key indicators of drop out rates which means in understanding how to lower drop out rates, it would make sense for an emphasis to be placed on office hours.  """
