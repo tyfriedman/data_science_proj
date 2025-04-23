@@ -4,6 +4,7 @@ import os
 import numpy as np
 import sys
 sys.path.append("../cohorts")
+sys.path.append("../data_preprocessing")
 from cohorts import (
     load_data,
     define_completion_stages,
@@ -13,10 +14,19 @@ from cohorts import (
     create_cohort_4,
     save_cohorts
 )
+from data_preprocessing import (
+    create_mappings,
+    apply_external_mapping,
+    apply_year_mapping,
+    apply_dropout_mapping,
+    apply_grade_mappings,
+    save_processed_data,
+    process_data
+)
 
-###########################################
-# SECTION 1: Tests for individual functions
-###########################################
+#########################################################
+# SECTION 1: Tests for cohorts.py functions
+#########################################################
 
 class TestCohortFunctions(unittest.TestCase):
     """Tests for the individual functions in cohorts.py"""
@@ -180,12 +190,136 @@ class TestCohortFunctions(unittest.TestCase):
         self.assertEqual(cohort4.loc[3, 'final_dropout'], self.test_df.loc[3, 'dropout'])
 
 
-#########################################
-# SECTION 2: Tests for output CSV files
-#########################################
+#########################################################
+# SECTION 2: Tests for data_preprocessing.py functions
+#########################################################
+
+class TestDataPreprocessing(unittest.TestCase):
+    """Tests for the data_preprocessing.py file"""
+    
+    def setUp(self):
+        """Create a sample dataframe for testing"""
+        # Create a simple test dataframe with the required columns
+        self.test_df = pd.DataFrame({
+            'External': ['Y', 'N', 'Y', 'N'],
+            'Year': ['first', 'second', 'third', 'first'],
+            'test 1': ['A', 'B', 'C', 'D'],
+            'test 2': ['B', 'C', 'D', 'F'],
+            'test 3': ['C', 'D', 'F', 'A'],
+            'ind cw': ['D', 'F', 'A', 'B'],
+            'group cw': ['F', 'A', 'B', 'C'],
+            'final grade': ['A', 'B', 'C', 'D'],
+            'dropout': ['Y', 'N', 'Y', 'N']
+        })
+        
+        # Get the mappings
+        self.mappings = create_mappings()
+    
+    def test_create_mappings(self):
+        """Test the create_mappings function"""
+        mappings = create_mappings()
+        
+        # Check that all expected mapping dictionaries are present
+        self.assertIn('grade_mapping', mappings)
+        self.assertIn('dropout_mapping', mappings)
+        self.assertIn('year_mapping', mappings)
+        self.assertIn('external_mapping', mappings)
+        
+        # Check values in grade_mapping
+        self.assertEqual(mappings['grade_mapping']['A'], 1)
+        self.assertEqual(mappings['grade_mapping']['F'], 5)
+        
+        # Check values in dropout_mapping
+        self.assertEqual(mappings['dropout_mapping']['Y'], 1)
+        self.assertEqual(mappings['dropout_mapping']['N'], 0)
+        
+        # Check values in year_mapping
+        self.assertEqual(mappings['year_mapping']['first'], 1)
+        self.assertEqual(mappings['year_mapping']['third'], 3)
+        
+        # Check values in external_mapping
+        self.assertEqual(mappings['external_mapping']['Y'], 1)
+        self.assertEqual(mappings['external_mapping']['N'], 0)
+    
+    def test_apply_external_mapping(self):
+        """Test the apply_external_mapping function"""
+        # Apply the function
+        df_mapped = apply_external_mapping(self.test_df, self.mappings['external_mapping'])
+        
+        # Check that External column values are converted correctly
+        self.assertEqual(df_mapped.loc[0, 'External'], 1)  # 'Y' -> 1
+        self.assertEqual(df_mapped.loc[1, 'External'], 0)  # 'N' -> 0
+        self.assertEqual(df_mapped.loc[2, 'External'], 1)  # 'Y' -> 1
+        self.assertEqual(df_mapped.loc[3, 'External'], 0)  # 'N' -> 0
+        
+        # Verify the original dataframe wasn't modified
+        self.assertEqual(self.test_df.loc[0, 'External'], 'Y')
+    
+    def test_apply_year_mapping(self):
+        """Test the apply_year_mapping function"""
+        # Apply the function
+        df_mapped = apply_year_mapping(self.test_df, self.mappings['year_mapping'])
+        
+        # Check that Year column values are converted correctly
+        self.assertEqual(df_mapped.loc[0, 'Year'], 1)  # 'first' -> 1
+        self.assertEqual(df_mapped.loc[1, 'Year'], 2)  # 'second' -> 2
+        self.assertEqual(df_mapped.loc[2, 'Year'], 3)  # 'third' -> 3
+        self.assertEqual(df_mapped.loc[3, 'Year'], 1)  # 'first' -> 1
+        
+        # Verify the original dataframe wasn't modified
+        self.assertEqual(self.test_df.loc[0, 'Year'], 'first')
+    
+    def test_apply_dropout_mapping(self):
+        """Test the apply_dropout_mapping function"""
+        # Apply the function
+        df_mapped = apply_dropout_mapping(self.test_df, self.mappings['dropout_mapping'])
+        
+        # Check that dropout column values are converted correctly
+        self.assertEqual(df_mapped.loc[0, 'dropout'], 1)  # 'Y' -> 1
+        self.assertEqual(df_mapped.loc[1, 'dropout'], 0)  # 'N' -> 0
+        self.assertEqual(df_mapped.loc[2, 'dropout'], 1)  # 'Y' -> 1
+        self.assertEqual(df_mapped.loc[3, 'dropout'], 0)  # 'N' -> 0
+        
+        # Verify the original dataframe wasn't modified
+        self.assertEqual(self.test_df.loc[0, 'dropout'], 'Y')
+    
+    def test_apply_grade_mappings(self):
+        """Test the apply_grade_mappings function"""
+        # Apply the function
+        df_mapped = apply_grade_mappings(self.test_df, self.mappings['grade_mapping'])
+        
+        # Check that test columns values are converted correctly
+        # test 1: A -> 1, B -> 2, C -> 3, D -> 4
+        self.assertEqual(df_mapped.loc[0, 'test 1'], 1)
+        self.assertEqual(df_mapped.loc[1, 'test 1'], 2)
+        self.assertEqual(df_mapped.loc[2, 'test 1'], 3)
+        self.assertEqual(df_mapped.loc[3, 'test 1'], 4)
+        
+        # test 2: B -> 2, C -> 3, D -> 4, F -> 5
+        self.assertEqual(df_mapped.loc[0, 'test 2'], 2)
+        self.assertEqual(df_mapped.loc[1, 'test 2'], 3)
+        self.assertEqual(df_mapped.loc[2, 'test 2'], 4)
+        self.assertEqual(df_mapped.loc[3, 'test 2'], 5)
+        
+        # Check that all grade columns are converted
+        grade_columns = ['test 1', 'test 2', 'test 3', 'ind cw', 'group cw', 'final grade']
+        for col in grade_columns:
+            self.assertTrue(df_mapped[col].dtype == 'int64' or 
+                           df_mapped[col].dtype == 'int32' or 
+                           df_mapped[col].dtype == 'float64',
+                           f"Column {col} was not converted to numeric")
+        
+        # Verify the original dataframe wasn't modified
+        self.assertEqual(self.test_df.loc[0, 'test 1'], 'A')
+    
+
+#########################################################
+# SECTION 3: Tests for actual CSV file outputs
+#########################################################
 
 class TestCohortDatasets(unittest.TestCase):
-    
+    """Tests for the cohort datasets"""
+
     def setUp(self):
         """Load the cohort datasets before each test"""
         cohort_dir = "../cohorts"
