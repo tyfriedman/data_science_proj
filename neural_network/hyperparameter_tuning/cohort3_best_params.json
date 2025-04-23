@@ -1,8 +1,8 @@
 {
-    "first_layer_size": 128,
-    "num_hidden_layers": 1,
+    "first_layer_size": 64,
+    "num_hidden_layers": 3,
     "activation": "relu",
-    "dropout_rate": 0.2,
+    "dropout_rate": 0.3,
     "optimizer": "adam",
     "learning_rate": 0.01,
     "batch_size": 32,

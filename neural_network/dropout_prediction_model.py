@@ -9,8 +9,14 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Dropout
 import seaborn as sns
 import os
+import warnings
 
-# Create neural_network directory if it doesn't exist
+# Suppress warnings
+warnings.filterwarnings('ignore')
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # Suppress TensorFlow logging (0=all, 1=info, 2=warning, 3=error)
+tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)  # Suppress TensorFlow warnings
+
+# Create plots directory if it doesn't exist
 os.makedirs('plots', exist_ok=True)
 
 def load_and_preprocess_data(cohort_number):
@@ -39,8 +45,16 @@ def load_and_preprocess_data(cohort_number):
     if cohort_number >= 3:
         common_features.extend(['session 5', 'test 3'])
     if cohort_number == 4:
-        common_features.extend(['session 6', 'ind cw', 'group cw', 'final grade', 
-                              'fourm Q', 'fourm A', 'office hour visits'])
+        common_features.extend(['session 6', 'ind cw', 'group cw', 'final grade'])
+    
+    if cohort_number == 1:
+        common_features.extend(['forum_Q_phase1', 'forum_A_phase1', 'office_hours_phase1'])
+    if cohort_number == 2:
+        common_features.extend(['forum_Q_phase2', 'forum_A_phase2', 'office_hours_phase2'])
+    if cohort_number == 3:
+        common_features.extend(['forum_Q_phase3', 'forum_A_phase3', 'office_hours_phase3'])
+    if cohort_number == 4:
+        common_features.extend(['fourm Q', 'fourm A', 'office hour visits'])
     
     # Select features and target
     X = data[common_features]
@@ -51,7 +65,8 @@ def load_and_preprocess_data(cohort_number):
 def build_model(input_dim):
     """Build a neural network model for dropout prediction."""
     model = Sequential([
-        Dense(64, activation='relu', input_dim=input_dim),
+        tf.keras.layers.Input(shape=(input_dim,)),
+        Dense(64, activation='relu'),
         Dropout(0.3),
         Dense(32, activation='relu'),
         Dropout(0.2),
@@ -166,7 +181,7 @@ def train_and_evaluate_cohort(cohort_number):
     metrics = evaluate_model(model, X_test_scaled, y_test, cohort_number)
     
     # Save model
-    model.save(f'models/cohort{cohort_number}_model.h5')
+    model.save(f'models/cohort{cohort_number}_model.keras')
     
     return metrics, model
 
