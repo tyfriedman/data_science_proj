@@ -43,7 +43,7 @@ plt.ylabel('PCA 2')
 # Actual Plot
 plt.subplot(1, 2, 2)
 plt.scatter(X_pca[:, 0], X_pca[:, 1], c=true_labels, cmap='coolwarm', edgecolor='k')
-plt.title('Actual Dropout Labels - Cohort 2')
+plt.title('Actual Dropout Labels - Cohort 1')
 plt.xlabel('PCA 1')
 plt.ylabel('PCA 2')
 
